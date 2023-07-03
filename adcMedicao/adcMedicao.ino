@@ -258,23 +258,21 @@ void loop()
         Serial.print(" ");
         Serial.print(voltage_volts);
         Serial.print(" ");
-        Serial.print(lux);
+        Serial.print(lux_real);
         Serial.print(" ");
-        Serial.print(temp);
+        Serial.print(temp_real);
         Serial.println(" ");
         Serial.print("\n");
       }
       else if(plot_type==PLOT_POWER_RMS)
       {
         Serial.print(current_Amper_RMS);
-        Serial.print(" ");
+        Serial.print("\t");
         Serial.print(voltage_volts_RMS);
-        Serial.print(" ");
+        Serial.print("\t");
         Serial.print(instantPowerValue_real);
-        Serial.print(" ");
-        Serial.print(activePower_real);
-        Serial.println(" ");
-        Serial.print("\n");
+        Serial.print("\t");
+        Serial.println(activePower_real);
       }
       
     }

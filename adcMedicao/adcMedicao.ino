@@ -3,11 +3,41 @@ const int tam = 150;      //Size of data buffers
 
 bool sendStatus = false;  //Flag to start data processing
 int dataVector[N][tam];   //Data vectors for each channel
+#define WINDOW 50
+
+uint16_t current_buffer[WINDOW];
+uint16_t voltage_buffer[WINDOW];
+
+uint16_t movingAverage(float sample)
+{
+ uint16_t averageValue = 0.0f; 
+  for(int i = WINDOW-1;i>0;i--)
+  {
+   buffer[i]= buffer[i-1];
+  }
+  buffer[0]= sample;
+
+  uint16_t sum = 0.0f;
+  for(int i = 0;i<WINDOW;i++)
+  {
+   sum+= buffer[i];
+  } 
+  averageValue = sum/WINDOW;
+  return averageValue;
+}
 
 //----------------------------
 //Initialization
 void setup()
 {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  //Zera o vetor de media
+   //Zera o vetor de media
+   for(int i=0; i<WINDOW; i++)
+   {
+    buffer[i]=0;
+   }
     //Set serial port configuration and establish communication
   Serial.begin(115200);
 
@@ -120,11 +150,13 @@ void loop()
 {
   int i,j;
   char cmd;
-  float voltage=0.0f;
-  float current=0.0f;
-  float lux=0.0f;
-  float temp=0.0f;
-  float signalValues=0.0f;
+  int voltage=0;
+  uint16_t current=0;
+  int lux=0;
+  int temp=0.0f;
+  int signalValues =0;
+  int averageValue = 0;
+
     //Verify if it is time to transmit data
   if (sendStatus == true){
       //Wait for the command from the host
@@ -138,26 +170,17 @@ void loop()
       for(j=0; j<(N-1); j++){
         //Serial.print(dataVector[j][i]);
         //Serial.print("\t");
-        signalValues = float(dataVector[j][i]);
-        switch(j)
-        {
-          case 1:
-            voltage = signalValues;
-            break;
-          case 2:
-            lux = signalValues;
-            break;
-          case 3:
-            current = signalValues;
-            break;
-          case 4:
-            temp = signalValues;
-            break;
-        }
+        signalValues = (dataVector[j][i]);
+        current = (dataVector[0][i]);
+        voltage = (dataVector[1][i]);
+        lux = (dataVector[2][i]);
+        temp = (dataVector[3][i]);
       }
-      signalValues =dataVector[N-1][i];
-      //Serial.println(signalValues);
-      Serial.println(dataVector[0][i]);
+      averageValue = movingAverage(current);
+      Serial.print(averageValue);
+      Serial.print(" ");
+      Serial.print(current);
+      Serial.println(" ");
     }
       //Restart acquisition
     noInterrupts();

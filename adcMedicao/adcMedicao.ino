@@ -7,6 +7,7 @@ int16_t dataVector[N][tam];   //Data vectors for each channel
 
 uint16_t current_buffer[WINDOW];
 uint16_t voltage_buffer[WINDOW];
+uint16_t power_buffer[WINDOW];
 
 uint16_t current_movingAverage(float sample)
 {
@@ -38,6 +39,23 @@ uint16_t voltage_movingAverage(float sample)
   for(int i = 0;i<WINDOW;i++)
   {
    sum+= voltage_buffer[i];
+  } 
+  averageValue = sum/WINDOW;
+  return averageValue;
+}
+uint16_t power_movingAverage(float sample)
+{
+ uint16_t averageValue = 0.0f; 
+  for(int i = WINDOW-1;i>0;i--)
+  {
+   power_buffer[i]= power_buffer[i-1];
+  }
+  power_buffer[0]= sample;
+
+  uint16_t sum = 0.0f;
+  for(int i = 0;i<WINDOW;i++)
+  {
+   sum+= power_buffer[i];
   } 
   averageValue = sum/WINDOW;
   return averageValue;
@@ -165,7 +183,8 @@ ISR(TIMER0_COMPA_vect) {
   else
     counter++;
 }
-
+#define PLOT_VARIABLES 1
+#define PLOT_POWER_RMS 2
 
 //--------------------------------------
 //Loop to send data to the main computer
@@ -173,14 +192,32 @@ void loop()
 {
   int i,j;
   char cmd;
-  int voltage=0;
-  uint16_t current=0;
-  int lux=0;
-  int temp=0.0f;
   int signalValues =0;
+
+  int voltage_raw=0;
+  uint16_t current_raw=0;
+  int lux_raw=0;
+  int temp_raw=0.0f;
+  int lux_real=0;
+  int temp_real=0.0f;
+  
   int currentAVG = 0;
   int voltageAVG = 0;
-  int instantPowerValue= 0;
+  int instantPowerValue_raw= 0;
+  int activePower_raw= 0;
+
+
+  
+  float current_Amper = 0.0f;
+  float voltage_volts = 0.0f;
+  float current_Amper_RMS = 0.0f;
+  float voltage_volts_RMS = 0.0f;
+
+  float instantPowerValue_real = 0.0f;
+  float activePower_real = 0.0f;
+  
+  int plot_type = 1;
+
     //Verify if it is time to transmit data
   if (sendStatus == true){
       //Wait for the command from the host
@@ -195,18 +232,51 @@ void loop()
         //Serial.print(dataVector[j][i]);
         //Serial.print("\t");
         signalValues = (dataVector[j][i]);
-        current = (dataVector[0][i]);
-        voltage = (dataVector[1][i]);
-        lux = (dataVector[2][i]);
-        temp = (dataVector[3][i]);
+        current_raw = (dataVector[0][i]);
+        voltage_raw = (dataVector[1][i]);
+        lux_raw = (dataVector[2][i]);
+        temp_raw = (dataVector[3][i]);
       }
-      currentAVG = current_movingAverage(current);
-      voltageAVG = voltage_movingAverage(voltage);
-      instantPowerValue =instantPower(current,voltage);
-      Serial.print(currentAVG);
-      Serial.print(" ");
-      Serial.print(current);
-      Serial.println(" ");
+      current_Amper= ((float(current_raw*5.0/1023.0))-2.5);
+      currentAVG = current_movingAverage(current_raw);
+      current_Amper_RMS = sqrt(((float(currentAVG*5.0/1023.0))-2.5)/(8*2.5));
+      voltageAVG = voltage_movingAverage(voltage_raw);
+      voltage_volts =(float(voltageAVG)*(5.0/1023.0)-2.5)*4*18.142;//Voltage = condicionamento 5v - 2.5v . Divisor tensão 4x. Transformador 127/7
+      voltage_volts_RMS =sqrt(((float(voltageAVG*5.0/1023.0))-2.5)*4);
+
+      instantPowerValue_raw =instantPower(current_raw,voltage_raw);
+      instantPowerValue_real= (float(instantPowerValue_raw)*5.0/1023.0);
+      activePower_raw= power_movingAverage(instantPowerValue_raw);
+      activePower_real= (float(activePower_raw)*5.0/1023.0);
+
+      lux_real=((float(lux_raw*5.0/1023.0)));
+      temp_real=((float(temp_raw*5.0/1023.0)));
+
+      if(plot_type==PLOT_VARIABLES)
+      {
+        Serial.print(current_Amper);
+        Serial.print(" ");
+        Serial.print(voltage_volts);
+        Serial.print(" ");
+        Serial.print(lux);
+        Serial.print(" ");
+        Serial.print(temp);
+        Serial.println(" ");
+        Serial.print("\n");
+      }
+      else if(plot_type==PLOT_POWER_RMS)
+      {
+        Serial.print(current_Amper_RMS);
+        Serial.print(" ");
+        Serial.print(voltage_volts_RMS);
+        Serial.print(" ");
+        Serial.print(instantPowerValue_real);
+        Serial.print(" ");
+        Serial.print(activePower_real);
+        Serial.println(" ");
+        Serial.print("\n");
+      }
+      
     }
       //Restart acquisition
     noInterrupts();

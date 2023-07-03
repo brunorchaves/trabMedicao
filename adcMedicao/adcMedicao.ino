@@ -2,30 +2,53 @@ const int N = 4;          //Number of channels
 const int tam = 150;      //Size of data buffers
 
 bool sendStatus = false;  //Flag to start data processing
-int dataVector[N][tam];   //Data vectors for each channel
+int16_t dataVector[N][tam];   //Data vectors for each channel
 #define WINDOW 50
 
 uint16_t current_buffer[WINDOW];
 uint16_t voltage_buffer[WINDOW];
 
-uint16_t movingAverage(float sample)
+uint16_t current_movingAverage(float sample)
 {
  uint16_t averageValue = 0.0f; 
   for(int i = WINDOW-1;i>0;i--)
   {
-   buffer[i]= buffer[i-1];
+   current_buffer[i]= current_buffer[i-1];
   }
-  buffer[0]= sample;
+  current_buffer[0]= sample;
 
   uint16_t sum = 0.0f;
   for(int i = 0;i<WINDOW;i++)
   {
-   sum+= buffer[i];
+   sum+= current_buffer[i];
+  } 
+  averageValue = sum/WINDOW;
+  return averageValue;
+}
+uint16_t voltage_movingAverage(float sample)
+{
+ uint16_t averageValue = 0.0f; 
+  for(int i = WINDOW-1;i>0;i--)
+  {
+   voltage_buffer[i]= voltage_buffer[i-1];
+  }
+  voltage_buffer[0]= sample;
+
+  uint16_t sum = 0.0f;
+  for(int i = 0;i<WINDOW;i++)
+  {
+   sum+= voltage_buffer[i];
   } 
   averageValue = sum/WINDOW;
   return averageValue;
 }
 
+int instantPower(int current, int voltage)
+{
+  int instantPowerValue=0;
+  instantPowerValue = current*voltage;
+  return instantPowerValue;
+}
 //----------------------------
 //Initialization
 void setup()
@@ -36,7 +59,7 @@ void setup()
    //Zera o vetor de media
    for(int i=0; i<WINDOW; i++)
    {
-    buffer[i]=0;
+    current_buffer[i]=0;
    }
     //Set serial port configuration and establish communication
   Serial.begin(115200);
@@ -155,8 +178,9 @@ void loop()
   int lux=0;
   int temp=0.0f;
   int signalValues =0;
-  int averageValue = 0;
-
+  int currentAVG = 0;
+  int voltageAVG = 0;
+  int instantPowerValue= 0;
     //Verify if it is time to transmit data
   if (sendStatus == true){
       //Wait for the command from the host
@@ -176,8 +200,10 @@ void loop()
         lux = (dataVector[2][i]);
         temp = (dataVector[3][i]);
       }
-      averageValue = movingAverage(current);
-      Serial.print(averageValue);
+      currentAVG = current_movingAverage(current);
+      voltageAVG = voltage_movingAverage(voltage);
+      instantPowerValue =instantPower(current,voltage);
+      Serial.print(currentAVG);
       Serial.print(" ");
       Serial.print(current);
       Serial.println(" ");
